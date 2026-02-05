@@ -197,6 +197,17 @@ Planned upgrades to make the editor even more powerful:
 
 ---
 
+## 😎 screenshots
+
+Here's a preview of the Valentine Card Designer in action:
+
+![Screenshot 1](screenshots/Screenshot%202026-02-05%20134601.png)
+![Screenshot 2](screenshots/Screenshot%202026-02-05%20134616.png)
+![Screenshot 3](screenshots/Screenshot%202026-02-05%20134628.png)
+![Screenshot 4](screenshots/Screenshot%202026-02-05%20134634.png) 
+
+---
+
 ## 📥 How to Use
 
 1. Open the app in your browser
