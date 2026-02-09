@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+    <title>Our Valentine Book</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background: #12122b; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        #book-viewport { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; perspective: 2000px; }
+        .book-wrapper { position: relative; transform-style: preserve-3d; transition: width 0.6s ease, transform 0.6s ease; }
+        .book-wrapper.single-mode { width: 340px; height: 480px; }
+        .book-wrapper.spread-mode { height: 480px; }
+        .page-3d {
+            position: absolute; width: 340px; height: 480px; top: 0;
+            background: #fff; transform-origin: left center;
+            backface-visibility: hidden; transition: transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1), left 0.6s ease;
+            overflow: hidden;
+        }
+        .page-3d.flipped { transform: rotateY(-180deg); }
+        .book-wrapper.single-mode .page-3d { left: 0; border-radius: 0 10px 10px 0; box-shadow: inset 3px 0 10px rgba(0,0,0,0.1); }
+        .book-wrapper.single-mode .page-3d.flipped { border-radius: 10px 0 0 10px; }
+        .book-wrapper.spread-mode .page-3d { border-radius: 0 10px 10px 0; box-shadow: inset 3px 0 10px rgba(0,0,0,0.1); }
+        .book-wrapper.spread-mode .page-3d.flipped { border-radius: 10px 0 0 10px; }
+        #spread-left-bg { position: absolute; left: 0; top: 0; width: 340px; height: 480px; border-radius: 10px 0 0 10px; overflow: hidden; z-index: 0; box-shadow: inset -3px 0 10px rgba(0,0,0,0.05); }
+        .spine-shadow { position: absolute; left: 338px; top: 0; width: 4px; height: 100%; background: linear-gradient(to right,rgba(0,0,0,0.15),transparent); z-index: 9999; pointer-events: none; }
+        .element { position: absolute; }
+        .element img, .element video { width: 100%; height: 100%; object-fit: cover; }
+        #controls { padding: 20px; display: flex; gap: 15px; align-items: center; justify-content: center; }
+        #controls button { width: 50px; height: 50px; border-radius: 50%; background: #fff; border: none; font-size: 1.2rem; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        #controls .mode-toggle { width: auto; padding: 0 18px; border-radius: 25px; font-size: 0.8rem; font-weight: 700; background: #ff4d6d; color: #fff; }
+        @media (max-width: 768px) {
+            .book-wrapper.single-mode { width: 260px; height: 380px; }
+            .book-wrapper.single-mode .page-3d { width: 260px; height: 380px; }
+            .book-wrapper.spread-mode .page-3d { width: 260px; height: 380px; }
+            #spread-left-bg { width: 260px; height: 380px; }
+            .spine-shadow { left: 258px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="book-viewport">
+        <div class="book-wrapper single-mode" id="preview-book"></div>
+    </div>
+    <div id="controls">
+        <button onclick="prevPage()">◀</button>
+        <button onclick="toggleAutoplay()">⏯</button>
+        <button onclick="nextPage()">▶</button>
+        <button class="mode-toggle" id="mode-btn" onclick="toggleMode()">📖 Spread</button>
+    </div>
+    <script>
+        const pages = [{"name":"Front Cover","background":"#ffb3c1","bgVideo":"","elements":[]},{"name":"Page 1","background":"#ffffff","bgVideo":"","elements":[{"id":"el_1770645182610","type":"image","content":"photos\\bg_ph1.jpg","x":-1.5999755859375,"y":-13.600006103515625,"w":349.60003662109375,"h":498.00006103515625,"rot":0}]},{"name":"Page 2","background":"#ffffff","bgVideo":"","elements":[{"id":"el_1770645205590","type":"image","content":"photos\\bg_ph2.jpg","x":-6.4000244140625,"y":-1.600006103515625,"w":360.00006103515625,"h":492.3999328613281,"rot":0}]},{"name":"Page 3","background":"#ffffff","bgVideo":"","elements":[{"id":"el_1770645230036","type":"image","content":"photos\\bg_ph.jpg","x":-3.20001220703125,"y":-3.2000732421875,"w":354.39996337890625,"h":490.79998779296875,"rot":0}]},{"name":"Back Cover","background":"#fbc2eb","bgVideo":"","elements":[]}];
+        let viewIdx = 0;
+        let viewMode = 'single';
+        let autoplayTimer = null;
+        let spreadList = [];
+        let spreadIdx = 0;
+        const isMobile = window.innerWidth < 768;
+        const PW = isMobile ? 260 : 340;
+
+        function applyBg(el, pg) {
+            const b = pg.background;
+            if(b.startsWith('linear')) el.style.background = b;
+            else if(b.startsWith('http')||b.startsWith('data:')||b.startsWith('blob:')) el.style.background='url('+b+') center/cover no-repeat';
+            else if(b.startsWith('#')||b.startsWith('rgb')) el.style.background=b;
+            else if(b.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) el.style.background='url('+b+') center/cover no-repeat';
+            else el.style.background=b;
+        }
+
+        function buildEl(el) {
+            const d = document.createElement('div');
+            d.className='element';
+            d.style.cssText='position:absolute;left:'+el.x+'px;top:'+el.y+'px;width:'+el.w+'px;height:'+el.h+'px;transform:rotate('+(el.rot||0)+'deg);';
+            if(el.type==='text') d.innerHTML='<p style="font-size:'+el.size+'px;color:'+el.color+';font-family:'+(el.font||'Segoe UI')+';text-align:center;width:100%;height:100%;display:flex;align-items:center;justify-content:center;margin:0;">'+el.content+'</p>';
+            else if(el.type==='sticker') d.innerHTML='<div style="font-size:'+el.size+'px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">'+el.content+'</div>';
+            else if(el.type==='image') d.innerHTML='<img src="'+el.content+'">';
+            else if(el.type==='video') d.innerHTML='<video src="'+el.content+'" autoplay loop muted playsinline></video>';
+            else if(el.type==='embed') d.innerHTML='<div style="width:100%;height:100%;pointer-events:auto;">'+el.content+'</div>';
+            else if(el.type==='shape') d.innerHTML='<div style="width:100%;height:100%;background:'+el.color+';border-radius:'+(el.shape==='circle'?'50%':'0px')+'"></div>';
+            return d;
+        }
+
+        function buildSurface(pg) {
+            const s = document.createElement('div');
+            s.style.cssText='width:100%;height:100%;position:relative;';
+            applyBg(s, pg);
+            if(pg.bgVideo) { const v=document.createElement('video'); v.src=pg.bgVideo; v.autoplay=true; v.loop=true; v.muted=true; v.playsInline=true; v.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none;'; s.appendChild(v); }
+            pg.elements.forEach(el => s.appendChild(buildEl(el)));
+            return s;
+        }
+
+        function computeSpreads() {
+            const sp = [];
+            sp.push({left:null, right:0});
+            let i=1; const li=pages.length-1;
+            while(i<li) { const l=i; const r=(i+1<li)?i+1:null; sp.push({left:l,right:r}); i+=2; }
+            sp.push({left:li, right:null});
+            return sp;
+        }
+
+        function build() {
+            const book = document.getElementById('preview-book');
+            book.innerHTML = '';
+            book.style.transform = '';
+            if(viewMode==='single') {
+                book.className='book-wrapper single-mode';
+                pages.forEach((pg,i) => {
+                    const p=document.createElement('div'); p.className='page-3d'; p.style.zIndex=pages.length-i;
+                    if(i<viewIdx) p.classList.add('flipped');
+                    p.appendChild(buildSurface(pg)); book.appendChild(p);
+                });
+            } else {
+                book.className='book-wrapper spread-mode';
+                spreadList = computeSpreads();
+                for(let i=0;i<spreadList.length;i++) {
+                    const sp=spreadList[i];
+                    const p=document.createElement('div'); p.className='page-3d'; p.style.zIndex=spreadList.length-i;
+                    p.dataset.idx=i;
+                    const pi=sp.right!==null?sp.right:sp.left;
+                    if(pi!==null) p.appendChild(buildSurface(pages[pi]));
+                    book.appendChild(p);
+                }
+                const spine=document.createElement('div'); spine.className='spine-shadow'; spine.id='spine-el'; spine.style.display='none'; book.appendChild(spine);
+                updateLayout();
+            }
+        }
+
+        function updateLayout() {
+            const book=document.getElementById('preview-book');
+            let lb=document.getElementById('spread-left-bg'); if(lb) lb.remove();
+            const spine=document.getElementById('spine-el');
+            const allP=document.querySelectorAll('#preview-book .page-3d');
+            if(spreadIdx===0||spreadIdx>=spreadList.length-1) {
+                book.style.width=PW+'px';
+                if(spine) spine.style.display='none';
+                allP.forEach(p=>{p.style.left='0px';});
+            } else {
+                book.style.width=(PW*2)+'px';
+                if(spine) { spine.style.display='block'; spine.style.left=(PW-2)+'px'; }
+                allP.forEach(p=>{p.style.left=PW+'px';});
+                const sp=spreadList[spreadIdx];
+                if(sp.left!==null) {
+                    lb=document.createElement('div'); lb.id='spread-left-bg';
+                    lb.appendChild(buildSurface(pages[sp.left]));
+                    book.appendChild(lb);
+                }
+            }
+        }
+
+        function nextPage() {
+            if(viewMode==='single') {
+                if(viewIdx>=pages.length-1) return;
+                document.querySelectorAll('#preview-book .page-3d')[viewIdx].classList.add('flipped');
+                viewIdx++;
+            } else {
+                if(spreadIdx>=spreadList.length-1) return;
+                document.querySelectorAll('#preview-book .page-3d')[spreadIdx].classList.add('flipped');
+                spreadIdx++;
+                setTimeout(()=>updateLayout(),450);
+            }
+        }
+
+        function prevPage() {
+            if(viewMode==='single') {
+                if(viewIdx<=0) return;
+                viewIdx--;
+                document.querySelectorAll('#preview-book .page-3d')[viewIdx].classList.remove('flipped');
+            } else {
+                if(spreadIdx<=0) return;
+                spreadIdx--;
+                document.querySelectorAll('#preview-book .page-3d')[spreadIdx].classList.remove('flipped');
+                setTimeout(()=>updateLayout(),450);
+            }
+        }
+
+        function toggleMode() {
+            const btn=document.getElementById('mode-btn');
+            if(viewMode==='single'){viewMode='spread';btn.textContent='📄 Single';}
+            else{viewMode='single';btn.textContent='📖 Spread';}
+            viewIdx=0;spreadIdx=0;build();
+        }
+
+        function toggleAutoplay() {
+            if(autoplayTimer){clearInterval(autoplayTimer);autoplayTimer=null;}
+            else{autoplayTimer=setInterval(()=>{
+                if(viewMode==='single'){if(viewIdx<pages.length-1) nextPage(); else{clearInterval(autoplayTimer);autoplayTimer=null;}}
+                else{if(spreadIdx<spreadList.length-1) nextPage(); else{clearInterval(autoplayTimer);autoplayTimer=null;}}
+            },3000);}
+        }
+
+        build();
+    </script>
+</body>
+</html>
