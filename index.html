@@ -12,8 +12,6 @@
             --panel: #fff;
             --text: #590d22;
             --dark: #12122b;
-            --flip-speed: 0.9s;
-
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -111,16 +109,9 @@
         .page-3d {
             position: absolute; width: 340px; height: 480px; top: 0;
             background: #fff; transform-origin: left center;
-            backface-visibility: hidden; 
-            transition:
-                transform var(--flip-speed) cubic-bezier(0.22, 1, 0.36, 1),
-                box-shadow var(--flip-speed) ease,
-                filter var(--flip-speed) ease;
-            will-change: transform;
+            backface-visibility: hidden; transition: transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
             overflow: hidden;
-            transform-style: preserve-3d;
         }
-        
         .page-3d.flipped { transform: rotateY(-180deg); }
 
         .book-wrapper.single-mode .page-3d {
