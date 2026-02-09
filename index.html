@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Valentine Book Studio Pro</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <style>
+        :root {
+            --primary: #ff4d6d;
+            --accent: #2a9d8f;
+            --bg: #fff0f3;
+            --panel: #fff;
+            --text: #590d22;
+            --dark: #12122b;
+            --flip-speed: 0.9s;
+
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+        #topbar {
+            background: var(--panel);
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            z-index: 100;
+        }
+        #title { font-size: 1.1rem; font-weight: 800; color: var(--primary); }
+        #page-nav { display: flex; align-items: center; gap: 10px; }
+        #page-nav button { width: 34px; height: 34px; border-radius: 50%; border: 1px solid #eee; background: #fff; cursor: pointer; }
+        #page-indicator { font-weight: 600; font-size: 0.9rem; min-width: 60px; text-align: center; }
+
+        #menu-area { position: relative; }
+        #menu-btn { font-size: 1.4rem; background: none; border: none; cursor: pointer; color: var(--primary); padding: 5px; }
+        #menu-dropdown {
+            position: absolute; right: 0; top: 45px; background: #fff; border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15); display: none; flex-direction: column;
+            min-width: 150px; overflow: hidden; z-index: 200;
+        }
+        #menu-dropdown button {
+            padding: 12px 15px; border: none; background: none; text-align: left;
+            font-weight: 600; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid #f5f5f5;
+        }
+        #menu-dropdown button:hover { background: #fff0f3; }
+
+        #editor-container { display: flex; height: calc(100vh - 54px); }
+        #sidebar {
+            width: 320px; background: var(--panel); border-right: 1px solid #eee;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        #tabs { display: flex; border-bottom: 1px solid #eee; }
+        .tab { flex: 1; padding: 12px; text-align: center; font-size: 0.8rem; font-weight: 700; color: #aaa; cursor: pointer; }
+        .tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+
+        .tab-content { flex: 1; overflow-y: auto; padding: 15px; display: none; }
+        .tab-content.active { display: block; }
+
+        .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 10px; margin-top: 15px; }
+        .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        button.action-btn {
+            background: var(--primary); color: #fff; border: none; padding: 10px;
+            border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.8rem;
+        }
+        button.action-btn.sec { background: #ff8fa3; }
+
+        #canvas-area { flex: 1; background: #2a2a3a; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; padding: 20px; }
+        #canvas {
+            width: 340px; height: 480px; background: #fff; border-radius: 10px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4); position: relative; overflow: hidden;
+            touch-action: none; transform-origin: center;
+        }
+
+        .element { position: absolute; cursor: move; border: 2px solid transparent; touch-action: none; }
+        .element.selected { border-color: var(--accent); z-index: 1000 !important; }
+        .element img, .element video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; border-radius: inherit; }
+        .element .iframe-wrap { width: 100%; height: 100%; pointer-events: none; overflow: hidden; border-radius: inherit; }
+        .element .iframe-wrap iframe { width: 100%; height: 100%; border: none; }
+
+        .video-fallback {
+            width: 100%; height: 100%; background: #eee; display: none;
+            flex-direction: column; align-items: center; justify-content: center; font-size: 2rem;
+        }
+        .video-fallback span { font-size: 0.6rem; color: #999; margin-top: 5px; }
+
+        .handle-resizer { position: absolute; width: 15px; height: 15px; background: #fff; border: 2px solid var(--accent); right: -8px; bottom: -8px; border-radius: 4px; cursor: se-resize; z-index: 10; }
+        .handle-rotator { position: absolute; width: 24px; height: 24px; background: #fff; border: 2px solid var(--primary); left: 50%; top: -35px; transform: translateX(-50%); border-radius: 50%; cursor: grab; display: flex; align-items: center; justify-content: center; font-size: 12px; z-index: 10; }
+
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+        }
+        .modal-box { background: #fff; padding: 20px; border-radius: 15px; width: 100%; max-width: 400px; }
+        .modal-box h3 { margin-bottom: 15px; color: var(--primary); }
+        .modal-box input, .modal-box textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
+        .modal-box .btns { display: flex; gap: 10px; }
+        .modal-box button { flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
+
+        /* Preview */
+        #preview-modal { background: var(--dark); flex-direction: column; }
+        #book-viewport { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; perspective: 2000px; }
+        .book-wrapper {
+            position: relative; transform-style: preserve-3d; transition: transform 0.8s ease;
+        }
+        .book-wrapper.single-mode { width: 340px; height: 480px; }
+        .book-wrapper.spread-mode { width: 680px; height: 480px; }
+
+        .page-3d {
+            position: absolute; width: 340px; height: 480px; top: 0;
+            background: #fff; transform-origin: left center;
+            backface-visibility: hidden; 
+            transition:
+                transform var(--flip-speed) cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow var(--flip-speed) ease,
+                filter var(--flip-speed) ease;
+            will-change: transform;
+            overflow: hidden;
+            transform-style: preserve-3d;
+        }
+        
+        .page-3d.flipped { transform: rotateY(-180deg); }
+
+        .book-wrapper.single-mode .page-3d {
+            left: 0;
+            border-radius: 0 10px 10px 0;
+            box-shadow: inset 3px 0 10px rgba(0,0,0,0.1);
+        }
+        .book-wrapper.single-mode .page-3d.flipped {
+            border-radius: 10px 0 0 10px;
+        }
+
+        .book-wrapper.spread-mode .page-3d {
+            left: 340px;
+            border-radius: 0 10px 10px 0;
+            box-shadow: inset 3px 0 10px rgba(0,0,0,0.1);
+        }
+        .book-wrapper.spread-mode .page-3d.flipped {
+            border-radius: 10px 0 0 10px;
+        }
+
+        .book-wrapper.spread-mode .spine-shadow {
+            position: absolute;
+            left: 338px; top: 0;
+            width: 4px; height: 100%;
+            background: linear-gradient(to right, rgba(0,0,0,0.15), transparent);
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        #spread-left-bg {
+            position: absolute;
+            left: 0; top: 0;
+            width: 340px; height: 480px;
+            border-radius: 10px 0 0 10px;
+            overflow: hidden;
+            z-index: 0;
+            box-shadow: inset -3px 0 10px rgba(0,0,0,0.05);
+        }
+
+        #preview-controls { padding: 20px; display: flex; gap: 15px; align-items: center; justify-content: center; }
+        #preview-controls button { width: 50px; height: 50px; border-radius: 50%; background: #fff; border: none; font-size: 1.2rem; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        #preview-controls .mode-toggle { width: auto; padding: 0 18px; border-radius: 25px; font-size: 0.8rem; font-weight: 700; background: #ff4d6d; color: #fff; }
+        #preview-close { position: absolute; top: 20px; right: 20px; background: #ff4d6d; color: #fff; border: none; padding: 8px 15px; border-radius: 20px; font-weight: 700; cursor: pointer; z-index: 1100; }
+
+        .layer-item {
+            background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 8px;
+            display: flex; align-items: center; justify-content: space-between; border: 1px solid #eee;
+        }
+        .layer-item.active { border-color: var(--accent); background: #f0fffb; }
+        .layer-item-info { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: 600; }
+        .layer-btns { display: flex; gap: 5px; }
+        .layer-btns button { width: 28px; height: 28px; border-radius: 4px; border: none; background: #eee; cursor: pointer; font-size: 0.7rem; }
+
+        #page-mgmt { display: flex; align-items: center; justify-content: space-between; background: #fdf2f4; padding: 12px; border-radius: 10px; margin-bottom: 20px; }
+        .mgmt-label { font-size: 0.8rem; font-weight: 700; color: var(--primary); }
+        .mgmt-btns { display: flex; align-items: center; gap: 10px; }
+        .mgmt-btns button { width: 32px; height: 32px; border-radius: 8px; border: none; background: var(--primary); color: #fff; font-weight: 900; cursor: pointer; }
+        .mgmt-count { font-weight: 800; font-size: 1rem; min-width: 25px; text-align: center; }
+
+        /* Floating Props Panel */
+        #props-panel {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 18px 20px;
+            z-index: 500;
+            width: 380px;
+            max-width: 95vw;
+            border: 2px solid #ffe0e6;
+        }
+        #props-panel .section-title { margin-top: 0; }
+        #props-panel label {
+            font-size: 0.75rem; font-weight: 700; color: #888; display: inline-block; margin-right: 5px;
+        }
+        #props-panel input[type="text"],
+        #props-panel input[type="number"] {
+            padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; margin-right: 10px;
+        }
+        #props-panel input[type="color"] {
+            width: 36px; height: 36px; border: none; cursor: pointer; vertical-align: middle;
+        }
+        #props-ui { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+        #props-panel .delete-btn {
+            background: #e63946; color: #fff; border: none; padding: 10px; border-radius: 8px;
+            font-weight: 600; cursor: pointer; font-size: 0.8rem; width: 100%;
+        }
+        #props-close {
+            position: absolute; top: 8px; right: 12px; background: none; border: none;
+            font-size: 1.2rem; cursor: pointer; color: #aaa; font-weight: 700;
+        }
+        #props-close:hover { color: #e63946; }
+
+        .bg-hint {
+            font-size: 0.7rem; color: #aaa; margin-top: 4px; margin-bottom: 8px; line-height: 1.4;
+        }
+
+        @media (max-width: 768px) {
+            #editor-container { flex-direction: column; }
+            #sidebar { width: 100%; height: 40vh; order: 2; border-right: none; border-top: 1px solid #eee; }
+            #canvas-area { height: 50vh; order: 1; }
+            #canvas { width: 260px; height: 380px; }
+            .book-wrapper.single-mode { width: 260px; height: 380px; }
+            .book-wrapper.single-mode .page-3d { width: 260px; height: 380px; }
+            .book-wrapper.spread-mode { width: 520px; height: 380px; }
+            .book-wrapper.spread-mode .page-3d { left: 260px; width: 260px; height: 380px; }
+            #spread-left-bg { width: 260px; height: 380px; }
+            .book-wrapper.spread-mode .spine-shadow { left: 258px; }
+        }
+
+        .sticker-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+        .sticker-item { font-size: 1.5rem; text-align: center; cursor: pointer; padding: 5px; border-radius: 5px; }
+        .sticker-item:hover { background: #fff0f3; }
+
+        #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 0.8rem; z-index: 2000; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="topbar">
+        <div id="title">Valentine Book</div>
+        <div id="page-nav">
+            <button onclick="changePage(-1)">◀</button>
+            <span id="page-indicator">0 / 0</span>
+            <button onclick="changePage(1)">▶</button>
+        </div>
+        <div id="menu-area">
+            <button id="menu-btn" onclick="toggleMenu()">☰</button>
+            <div id="menu-dropdown">
+                <button onclick="openTab('Layers')">📑 Layer Panel</button>
+                <button onclick="showPreview()">👁 Preview Book</button>
+                <button onclick="exportStandalone()">💾 Download HTML</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editor-container">
+        <div id="sidebar">
+            <div id="tabs">
+                <div class="tab active" onclick="switchTab('Add')">Add</div>
+                <div class="tab" onclick="switchTab('Page')">Page</div>
+                <div class="tab" onclick="switchTab('Layers')">Layers</div>
+                <div class="tab" onclick="switchTab('Settings')">Settings</div>
+            </div>
+
+            <div id="tab-Add" class="tab-content active">
+                <div class="section-title">Content</div>
+                <div class="control-grid">
+                    <button class="action-btn" onclick="addText()">📝 Text</button>
+                    <button class="action-btn" onclick="showMediaModal('image')">🖼 Photo</button>
+                    <button class="action-btn sec" onclick="showMediaModal('video')">🎬 Video</button>
+                    <button class="action-btn sec" onclick="showMediaModal('embed')">🔗 Embed</button>
+                </div>
+                <div class="section-title">Shapes</div>
+                <div class="control-grid">
+                    <button class="action-btn ghost" style="background:#eee;color:#333" onclick="addShape('rect')">Rect</button>
+                    <button class="action-btn ghost" style="background:#eee;color:#333" onclick="addShape('circle')">Circle</button>
+                </div>
+                <div class="section-title">Stickers</div>
+                <div class="sticker-grid" id="stickers-list"></div>
+            </div>
+
+            <div id="tab-Page" class="tab-content">
+                <div id="page-mgmt">
+                    <div class="mgmt-label">Interior Pages</div>
+                    <div class="mgmt-btns">
+                        <button onclick="adjustInteriorPages(-1)">-</button>
+                        <div class="mgmt-count" id="interior-count-ui">3</div>
+                        <button onclick="adjustInteriorPages(1)">+</button>
+                    </div>
+                </div>
+                <div class="section-title">Background</div>
+                <input type="text" id="bg-input" placeholder="color, URL, or filename (e.g. bg.jpg)" onchange="updateBg()">
+                <div class="bg-hint">💡 Enter a hex color (#ff4d6d), image URL, or local filename like <b>photo.jpg</b> from the same folder.</div>
+                <button class="action-btn" style="width:100%;margin-top:5px" onclick="document.getElementById('bg-file').click()">Upload BG Image</button>
+                <input type="file" id="bg-file" style="display:none" accept="image/*,video/*" onchange="handleFile(event, 'bg')">
+                <div class="section-title" style="margin-top:10px">BG Video (optional)</div>
+                <input type="text" id="bg-video-input" placeholder="video filename or URL (e.g. bg.mp4)" onchange="updateBgVideo()">
+                <div class="bg-hint">🎬 Add a looping video background. Leave empty for none.</div>
+                <button class="action-btn sec" style="width:100%;margin-top:5px" onclick="removeBgVideo()">Remove Video BG</button>
+                <div class="section-title">Quick Colors</div>
+                <div class="control-grid" id="bg-presets"></div>
+            </div>
+
+            <div id="tab-Layers" class="tab-content">
+                <div class="section-title">Elements on this Page</div>
+                <div id="layer-list-container"></div>
+            </div>
+
+            <div id="tab-Settings" class="tab-content">
+                <div class="section-title">Animation Speed</div>
+                <input type="range" id="speed-range" min="0.1" max="2" step="0.1" value="0.8" style="width:100%">
+                <div class="section-title">Autoplay Delay (ms)</div>
+                <input type="number" id="autoplay-delay" value="3000" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ddd">
+            </div>
+        </div>
+
+        <div id="canvas-area" onpointerdown="canvasAreaDeselect(event)">
+            <div id="canvas" onpointerdown="event.stopPropagation()"></div>
+        </div>
+    </div>
+
+    <!-- Floating Props Panel -->
+    <div id="props-panel" onpointerdown="event.stopPropagation()">
+        <button id="props-close" onclick="deselect()">✕</button>
+        <div class="section-title">STYLE ELEMENT</div>
+        <div id="props-ui"></div>
+        <button class="delete-btn" onclick="deleteSelected()">Delete Element</button>
+    </div>
+
+    <!-- Media Modal -->
+    <div id="media-modal" class="modal">
+        <div class="modal-box">
+            <h3 id="media-title">Add Image</h3>
+            <div id="modal-inputs">
+                <input type="text" id="media-url" placeholder="Paste URL or local filename...">
+                <div id="embed-only" style="display:none">
+                    <textarea id="media-embed" rows="4" placeholder="Paste <iframe> code here..."></textarea>
+                </div>
+                <div id="upload-option">
+                    <button class="action-btn" style="width:100%" onclick="document.getElementById('media-file').click()">Upload Local File</button>
+                    <input type="file" id="media-file" style="display:none" onchange="handleFile(event, 'media')">
+                </div>
+            </div>
+            <div class="btns" style="margin-top:15px">
+                <button onclick="closeModal('media-modal')">Cancel</button>
+                <button class="action-btn" onclick="confirmMedia()">Add to Page</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="preview-modal" class="modal">
+        <button id="preview-close" onclick="closeModal('preview-modal')">Close ✕</button>
+        <div id="book-viewport">
+            <div class="book-wrapper single-mode" id="preview-book"></div>
+        </div>
+        <div id="preview-controls">
+            <button onclick="prevPreviewPage()">◀</button>
+            <button id="play-btn" onclick="toggleAutoplay()">⏯</button>
+            <button onclick="nextPreviewPage()">▶</button>
+            <button class="mode-toggle" id="mode-toggle-btn" onclick="toggleViewMode()">📖 Spread</button>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        let pages = [];
+        let curIdx = 0;
+        let selectedId = null;
+        let interiorCount = 3;
+        let mediaType = 'image';
+        let autoplayTimer = null;
+        let viewIdx = 0;
+        let viewMode = 'single';
+        let spreadList = [];
+        let spreadIdx = 0;
+
+        const stickers = ['❤️','💖','🌹','🧸','✨','💝','💍','🔥','💘','🍬','🍫','🎈','🦋','🌸','🌈','💎','💌','🥂'];
+        const bgColors = ['#ffffff','#ff4d6d','#ffb3c1','#c9184a','#fff0f3','#1a1a2e','#ff8fa3','#2a9d8f','#fbc2eb','#a18cd1'];
+
+        function initApp() {
+            pages.push(createPage('Front Cover', 'linear-gradient(45deg, #ff4d6d, #ff8fa3)'));
+            for (let i = 1; i <= interiorCount; i++) {
+                pages.push(createPage(`Page ${i}`, '#ffffff'));
+            }
+            pages.push(createPage('Back Cover', 'linear-gradient(45deg, #ff8fa3, #ff4d6d)'));
+            renderEditor();
+            populateStickers();
+            populateBgPresets();
+        }
+
+        function createPage(name, bg) {
+            return { name, background: bg, bgVideo: '', elements: [] };
+        }
+
+        function applyBgToElement(el, page) {
+            const bg = page.background;
+            if (bg.startsWith('linear')) {
+                el.style.background = bg;
+            } else if (bg.startsWith('http') || bg.startsWith('data:') || bg.startsWith('blob:')) {
+                el.style.background = `url(${bg}) center/cover no-repeat`;
+            } else if (bg.startsWith('#') || bg.startsWith('rgb')) {
+                el.style.background = bg;
+            } else if (bg.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) {
+                el.style.background = `url(${bg}) center/cover no-repeat`;
+            } else if (bg.match(/\.(mp4|webm|ogg)$/i)) {
+                el.style.background = '#000';
+            } else {
+                el.style.background = bg;
+            }
+        }
+
+        function createBgVideoEl(src) {
+            if (!src) return null;
+            const v = document.createElement('video');
+            v.src = src;
+            v.autoplay = true;
+            v.loop = true;
+            v.muted = true;
+            v.playsInline = true;
+            v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none;';
+            return v;
+        }
+
+        // --- Core UI ---
+        function switchTab(name) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${name}')"]`).classList.add('active');
+            document.getElementById(`tab-${name}`).classList.add('active');
+        }
+
+        function toggleMenu() {
+            const d = document.getElementById('menu-dropdown');
+            if (d.style.display === 'flex') {
+                d.style.display = 'none';
+            } else {
+                d.style.display = 'flex';
+                // Stop the next click from closing it immediately
+                setTimeout(() => {
+                    document.addEventListener('pointerdown', closeMenuOutside, { once: true });
+                }, 10);
+            }
+        }
+
+        function closeMenuOutside(e) {
+            const menu = document.getElementById('menu-dropdown');
+            const menuBtn = document.getElementById('menu-btn');
+            if (!menu.contains(e.target) && e.target !== menuBtn) {
+                menu.style.display = 'none';
+            }
+        }
+
+        function openTab(name) { switchTab(name); toggleMenu(); }
+
+        function changePage(dir) {
+            curIdx = Math.max(0, Math.min(pages.length - 1, curIdx + dir));
+            renderEditor();
+        }
+
+        function adjustInteriorPages(dir) {
+            const newCount = Math.max(1, Math.min(16, interiorCount + dir));
+            if (newCount === interiorCount) return;
+            const cover = pages[0];
+            const back = pages[pages.length - 1];
+            let middle = pages.slice(1, -1);
+            if (dir > 0) {
+                for (let i = 0; i < (newCount - interiorCount); i++) {
+                    middle.push(createPage(`Page ${middle.length + 1}`, '#ffffff'));
+                }
+            } else {
+                middle = middle.slice(0, newCount);
+            }
+            pages = [cover, ...middle, back];
+            interiorCount = newCount;
+            curIdx = Math.min(curIdx, pages.length - 1);
+            document.getElementById('interior-count-ui').innerText = interiorCount;
+            renderEditor();
+        }
+
+        // --- Rendering ---
+        function renderEditor() {
+            const canvas = document.getElementById('canvas');
+            const page = pages[curIdx];
+
+            applyBgToElement(canvas, page);
+            canvas.innerHTML = '';
+
+            if (page.bgVideo) {
+                const vid = createBgVideoEl(page.bgVideo);
+                if (vid) canvas.appendChild(vid);
+            }
+
+            page.elements.forEach(el => {
+                const div = createDOMElement(el);
+                canvas.appendChild(div);
+            });
+
+            document.getElementById('page-indicator').innerText = `${curIdx + 1} / ${pages.length}`;
+            document.getElementById('bg-input').value = page.background.startsWith('linear') ? '' : page.background;
+            document.getElementById('bg-video-input').value = page.bgVideo || '';
+            updateLayerList();
+            if (selectedId) {
+                const still = page.elements.find(e => e.id === selectedId);
+                if (!still) deselect();
+                else renderProps();
+            }
+        }
+
+        function createDOMElement(el) {
+            const div = document.createElement('div');
+            div.className = `element ${selectedId === el.id ? 'selected' : ''}`;
+            div.id = el.id;
+            div.style.left = el.x + 'px';
+            div.style.top = el.y + 'px';
+            div.style.width = el.w + 'px';
+            div.style.height = el.h + 'px';
+            div.style.transform = `rotate(${el.rot || 0}deg)`;
+            div.style.zIndex = el.z || 1;
+
+            if (el.type === 'text') {
+                div.innerHTML = `<p style="font-size:${el.size}px; color:${el.color}; font-family:${el.font}; text-align:center; width:100%; height:100%; display:flex; align-items:center; justify-content:center; margin:0; pointer-events:none;">${el.content}</p>`;
+            } else if (el.type === 'sticker') {
+                div.innerHTML = `<div style="font-size:${el.size}px; width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events:none;">${el.content}</div>`;
+            } else if (el.type === 'image') {
+                div.innerHTML = `<img src="${el.content}" draggable="false">`;
+            } else if (el.type === 'video') {
+                div.innerHTML = `<video src="${el.content}" autoplay loop muted playsinline onerror="this.nextElementSibling.style.display='flex';this.style.display='none'"></video><div class="video-fallback">🎬<span>Preview unavailable</span></div>`;
+            } else if (el.type === 'embed') {
+                div.innerHTML = `<div class="iframe-wrap">${el.content}</div>`;
+            } else if (el.type === 'shape') {
+                div.innerHTML = `<div style="width:100%; height:100%; background:${el.color}; border-radius:${el.shape === 'circle' ? '50%' : '0px'}; pointer-events:none;"></div>`;
+            }
+
+            const resizer = document.createElement('div');
+            resizer.className = 'handle-resizer';
+            resizer.addEventListener('pointerdown', (e) => { e.stopPropagation(); startResize(e, el); });
+            div.appendChild(resizer);
+
+            const rotator = document.createElement('div');
+            rotator.className = 'handle-rotator';
+            rotator.innerHTML = '↻';
+            rotator.addEventListener('pointerdown', (e) => { e.stopPropagation(); startRotate(e, el); });
+            div.appendChild(rotator);
+
+            div.addEventListener('pointerdown', (e) => {
+                if (e.target.classList.contains('handle-resizer') || e.target.classList.contains('handle-rotator')) return;
+                e.stopPropagation();
+                select(el.id);
+                startDrag(e, el);
+            });
+
+            return div;
+        }
+
+        // --- Selection ---
+        function select(id) {
+            selectedId = id;
+            document.querySelectorAll('.element').forEach(el => el.classList.remove('selected'));
+            const dom = document.getElementById(id);
+            if (dom) dom.classList.add('selected');
+            renderProps();
+            updateLayerList();
+        }
+
+        function canvasAreaDeselect(e) { deselect(); }
+
+        function deselect() {
+            selectedId = null;
+            document.querySelectorAll('.element').forEach(el => el.classList.remove('selected'));
+            document.getElementById('props-panel').style.display = 'none';
+            updateLayerList();
+        }
+
+        // --- Drag / Resize / Rotate ---
+        function startDrag(e, el) {
+            e.preventDefault();
+            const startX = e.clientX, startY = e.clientY;
+            const initX = el.x, initY = el.y;
+            const onMove = (me) => {
+                me.preventDefault();
+                el.x = initX + (me.clientX - startX);
+                el.y = initY + (me.clientY - startY);
+                const dom = document.getElementById(el.id);
+                if (dom) { dom.style.left = el.x + 'px'; dom.style.top = el.y + 'px'; }
+            };
+            const onEnd = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onEnd); };
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onEnd);
+        }
+
+        function startResize(e, el) {
+            e.preventDefault();
+            const startX = e.clientX, startY = e.clientY;
+            const initW = el.w, initH = el.h;
+            const onMove = (me) => {
+                me.preventDefault();
+                el.w = Math.max(30, initW + (me.clientX - startX));
+                el.h = Math.max(30, initH + (me.clientY - startY));
+                const dom = document.getElementById(el.id);
+                if (dom) { dom.style.width = el.w + 'px'; dom.style.height = el.h + 'px'; }
+            };
+            const onEnd = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onEnd); };
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onEnd);
+        }
+
+        function startRotate(e, el) {
+            e.preventDefault();
+            const rect = document.getElementById(el.id).getBoundingClientRect();
+            const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+            const onMove = (me) => {
+                me.preventDefault();
+                el.rot = Math.atan2(me.clientY - cy, me.clientX - cx) * (180 / Math.PI) + 90;
+                document.getElementById(el.id).style.transform = `rotate(${el.rot}deg)`;
+            };
+            const onEnd = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onEnd); };
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onEnd);
+        }
+
+        // --- Layers ---
+        function updateLayerList() {
+            const container = document.getElementById('layer-list-container');
+            container.innerHTML = '';
+            [...pages[curIdx].elements].reverse().forEach((el) => {
+                const div = document.createElement('div');
+                div.className = `layer-item ${selectedId === el.id ? 'active' : ''}`;
+                let icon = { text: '📝', image: '🖼', video: '🎬', sticker: '😊', shape: '⬜', embed: '🔗' }[el.type] || '📦';
+                div.innerHTML = `
+                    <div class="layer-item-info"><span>${icon}</span> ${el.type}</div>
+                    <div class="layer-btns">
+                        <button onclick="event.stopPropagation(); moveLayer('${el.id}', 1)">▲</button>
+                        <button onclick="event.stopPropagation(); moveLayer('${el.id}', -1)">▼</button>
+                        <button style="color:red" onclick="event.stopPropagation(); deleteElement('${el.id}')">✕</button>
+                    </div>`;
+                div.onclick = (e) => { e.stopPropagation(); select(el.id); };
+                container.appendChild(div);
+            });
+        }
+
+        function moveLayer(id, dir) {
+            const els = pages[curIdx].elements;
+            const idx = els.findIndex(e => e.id === id);
+            if (idx === -1) return;
+            const ni = idx + dir;
+            if (ni < 0 || ni >= els.length) return;
+            [els[idx], els[ni]] = [els[ni], els[idx]];
+            renderEditor();
+        }
+
+        function deleteElement(id) {
+            pages[curIdx].elements = pages[curIdx].elements.filter(e => e.id !== id);
+            if (selectedId === id) deselect();
+            renderEditor();
+        }
+
+        function deleteSelected() { if (selectedId) deleteElement(selectedId); }
+
+        // --- Add Elements ---
+        function addText() {
+            const text = prompt("Enter text:", "My Valentine");
+            if (text) {
+                const el = { id: 'el_' + Date.now(), type: 'text', content: text, x: 50, y: 50, w: 200, h: 60, color: '#ff4d6d', size: 24, font: 'Segoe UI', rot: 0 };
+                pages[curIdx].elements.push(el);
+                renderEditor();
+                select(el.id);
+            }
+        }
+
+        function addSticker(s) {
+            const el = { id: 'el_' + Date.now(), type: 'sticker', content: s, x: 100, y: 100, w: 60, h: 60, size: 50, rot: 0 };
+            pages[curIdx].elements.push(el);
+            renderEditor();
+            select(el.id);
+        }
+
+        function addShape(type) {
+            const el = { id: 'el_' + Date.now(), type: 'shape', shape: type, color: '#ffb3c1', x: 50, y: 50, w: 100, h: 100, rot: 0 };
+            pages[curIdx].elements.push(el);
+            renderEditor();
+            select(el.id);
+        }
+
+        function showMediaModal(type) {
+            mediaType = type;
+            document.getElementById('media-title').innerText = `Add ${type}`;
+            document.getElementById('embed-only').style.display = type === 'embed' ? 'block' : 'none';
+            document.getElementById('upload-option').style.display = type === 'embed' ? 'none' : 'block';
+            document.getElementById('media-url').value = '';
+            document.getElementById('media-embed').value = '';
+            document.getElementById('media-modal').style.display = 'flex';
+        }
+
+        function confirmMedia() {
+            const url = document.getElementById('media-url').value;
+            const embed = document.getElementById('media-embed').value;
+            let finalContent = url;
+            if (mediaType === 'embed' && embed.includes('<iframe')) finalContent = embed;
+            else if (mediaType === 'embed' && url.includes('youtube.com')) {
+                const vid = url.split('v=')[1]?.split('&')[0];
+                finalContent = `<iframe src="https://www.youtube.com/embed/${vid}" allowfullscreen></iframe>`;
+            }
+            if (finalContent) {
+                const el = { id: 'el_' + Date.now(), type: mediaType, content: finalContent, x: 20, y: 20, w: 200, h: 150, rot: 0 };
+                pages[curIdx].elements.push(el);
+                renderEditor();
+                select(el.id);
+                closeModal('media-modal');
+            }
+        }
+
+        function handleFile(e, mode) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                if (mode === 'bg') {
+                    if (file.type.includes('video')) {
+                        pages[curIdx].bgVideo = re.target.result;
+                    } else {
+                        pages[curIdx].background = re.target.result;
+                    }
+                    renderEditor();
+                } else {
+                    const el = { id: 'el_' + Date.now(), type: file.type.includes('video') ? 'video' : 'image', content: re.target.result, x: 20, y: 20, w: 200, h: 150, rot: 0 };
+                    pages[curIdx].elements.push(el);
+                    renderEditor();
+                    select(el.id);
+                    closeModal('media-modal');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateBg() {
+            const val = document.getElementById('bg-input').value.trim();
+            if (val) {
+                pages[curIdx].background = val;
+                renderEditor();
+            }
+        }
+
+        function updateBgVideo() {
+            const val = document.getElementById('bg-video-input').value.trim();
+            pages[curIdx].bgVideo = val;
+            renderEditor();
+        }
+
+        function removeBgVideo() {
+            pages[curIdx].bgVideo = '';
+            renderEditor();
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+            if (id === 'preview-modal') stopAutoplay();
+        }
+
+        // --- Props ---
+        function renderProps() {
+            const ui = document.getElementById('props-ui');
+            const panel = document.getElementById('props-panel');
+            const el = pages[curIdx].elements.find(e => e.id === selectedId);
+            if (!el) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            ui.innerHTML = '';
+            if (el.type === 'text') {
+                ui.innerHTML = `<label>Text Content</label><input type="text" value="${el.content}" oninput="updateProp('content', this.value)"><label>Size</label><input type="number" value="${el.size}" style="width:70px" oninput="updateProp('size', this.value)"><label>Color</label><input type="color" value="${el.color}" oninput="updateProp('color', this.value)">`;
+            } else if (el.type === 'shape') {
+                ui.innerHTML = `<label>Color</label><input type="color" value="${el.color}" oninput="updateProp('color', this.value)">`;
+            } else if (el.type === 'sticker') {
+                ui.innerHTML = `<label>Size</label><input type="number" value="${el.size}" style="width:70px" oninput="updateProp('size', this.value)">`;
+            } else if (el.type === 'image' || el.type === 'video') {
+                ui.innerHTML = `<label>Source</label><input type="text" value="${el.content.substring(0, 50)}..." readonly style="opacity:0.5;font-size:0.7rem;">`;
+            }
+        }
+
+        function updateProp(key, val) {
+            const el = pages[curIdx].elements.find(e => e.id === selectedId);
+            if (el) { el[key] = val; renderEditor(); select(selectedId); }
+        }
+
+        // ======== PREVIEW SYSTEM ========
+
+        function buildPageSurface(page) {
+            const surface = document.createElement('div');
+            surface.style.width = '100%';
+            surface.style.height = '100%';
+            surface.style.position = 'relative';
+            applyBgToElement(surface, page);
+
+            if (page.bgVideo) {
+                const vid = createBgVideoEl(page.bgVideo);
+                if (vid) surface.appendChild(vid);
+            }
+
+            page.elements.forEach(el => {
+                const elDiv = document.createElement('div');
+                elDiv.style.position = 'absolute';
+                elDiv.style.left = el.x + 'px';
+                elDiv.style.top = el.y + 'px';
+                elDiv.style.width = el.w + 'px';
+                elDiv.style.height = el.h + 'px';
+                elDiv.style.transform = `rotate(${el.rot || 0}deg)`;
+                if (el.type === 'text') elDiv.innerHTML = `<p style="font-size:${el.size}px; color:${el.color}; font-family:${el.font}; text-align:center; width:100%; height:100%; display:flex; align-items:center; justify-content:center; margin:0;">${el.content}</p>`;
+                else if (el.type === 'sticker') elDiv.innerHTML = `<div style="font-size:${el.size}px; width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${el.content}</div>`;
+                else if (el.type === 'image') elDiv.innerHTML = `<img src="${el.content}" style="width:100%;height:100%;object-fit:cover;">`;
+                else if (el.type === 'video') elDiv.innerHTML = `<video src="${el.content}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>`;
+                else if (el.type === 'embed') elDiv.innerHTML = `<div style="width:100%;height:100%;pointer-events:auto;">${el.content}</div>`;
+                else if (el.type === 'shape') elDiv.innerHTML = `<div style="width:100%;height:100%;background:${el.color};border-radius:${el.shape === 'circle' ? '50%' : '0px'}"></div>`;
+                surface.appendChild(elDiv);
+            });
+            return surface;
+        }
+
+        function showPreview() {
+            viewIdx = 0;
+            spreadIdx = 0;
+            viewMode = 'single';
+            document.getElementById('mode-toggle-btn').textContent = '📖 Spread';
+            buildPreview();
+            document.getElementById('preview-modal').style.display = 'flex';
+        }
+
+        function buildPreview() {
+            const book = document.getElementById('preview-book');
+            book.innerHTML = '';
+            book.style.transform = '';
+
+            if (viewMode === 'single') {
+                book.className = 'book-wrapper single-mode';
+                buildSinglePreview(book);
+            } else {
+                book.className = 'book-wrapper spread-mode';
+                buildSpreadPreview(book);
+            }
+        }
+
+        // ---- SINGLE PAGE VIEW ----
+        function buildSinglePreview(book) {
+            pages.forEach((page, i) => {
+                const pDiv = document.createElement('div');
+                pDiv.className = 'page-3d';
+                pDiv.style.zIndex = pages.length - i;
+                if (i < viewIdx) pDiv.classList.add('flipped');
+                pDiv.appendChild(buildPageSurface(page));
+                book.appendChild(pDiv);
+            });
+        }
+
+        // ---- SPREAD VIEW ----
+        // Spread structure:
+        //   Spread 0: cover alone (right side page)
+        //   Spread 1: page[1] left, page[2] right
+        //   Spread 2: page[3] left, page[4] right
+        //   ...
+        //   Last spread: back cover alone (left side page)
+
+        function computeSpreads() {
+            const s = [];
+            // Front cover alone
+            s.push({ left: null, right: 0 });
+            // Interior pairs
+            let i = 1;
+            const lastIdx = pages.length - 1;
+            while (i < lastIdx) {
+                const left = i;
+                const right = (i + 1 < lastIdx) ? i + 1 : null;
+                s.push({ left, right });
+                i += 2;
+            }
+            // Back cover alone
+            s.push({ left: lastIdx, right: null });
+            return s;
+        }
+
+        function buildSpreadPreview(book) {
+            spreadList = computeSpreads();
+            spreadIdx = 0;
+
+            // Each spread except the first becomes a flippable page (showing its right-side content)
+            // The "stack" is: spread[0].right = cover on top, then spread[1].right, etc.
+            // When we flip spread i, it reveals the LEFT side of spread i+1 plus the RIGHT side of spread i+1
+
+            // We create one page-3d for each spread
+            for (let i = 0; i < spreadList.length; i++) {
+                const spread = spreadList[i];
+                const pDiv = document.createElement('div');
+                pDiv.className = 'page-3d';
+                pDiv.style.zIndex = spreadList.length - i;
+                pDiv.dataset.idx = i;
+
+                // The visible face of this page shows the RIGHT page of spread[i]
+                // (or LEFT page if right is null, for back cover)
+                const pageIdx = spread.right !== null ? spread.right : spread.left;
+                if (pageIdx !== null) {
+                    pDiv.appendChild(buildPageSurface(pages[pageIdx]));
+                }
+                book.appendChild(pDiv);
+            }
+
+            // Add spine shadow
+            const spine = document.createElement('div');
+            spine.className = 'spine-shadow';
+            spine.style.display = 'none';
+            spine.id = 'spine-el';
+            book.appendChild(spine);
+
+            updateSpreadLayout();
+        }
+
+        function updateSpreadLayout() {
+            const book = document.getElementById('preview-book');
+
+            // Update left background
+            let leftBg = document.getElementById('spread-left-bg');
+            if (leftBg) leftBg.remove();
+
+            const spine = document.getElementById('spine-el');
+
+            if (spreadIdx === 0) {
+                // Front cover centered (single page appearance)
+                book.style.width = '340px';
+                book.style.transform = '';
+                if (spine) spine.style.display = 'none';
+
+                // Move all page-3d to left:0 for single-page centering
+                document.querySelectorAll('#preview-book .page-3d').forEach(p => {
+                    p.style.left = '0px';
+                });
+            } else if (spreadIdx >= spreadList.length - 1) {
+                // Back cover centered (single page appearance)
+                book.style.width = '340px';
+                book.style.transform = '';
+                if (spine) spine.style.display = 'none';
+
+                document.querySelectorAll('#preview-book .page-3d').forEach(p => {
+                    p.style.left = '0px';
+                });
+            } else {
+                // Open book: two pages visible
+                book.style.width = '680px';
+                book.style.transform = '';
+                if (spine) spine.style.display = 'block';
+
+                // Move unflipped pages to left:340px
+                document.querySelectorAll('#preview-book .page-3d').forEach(p => {
+                    p.style.left = '340px';
+                });
+
+                // Show left page
+                const spread = spreadList[spreadIdx];
+                if (spread.left !== null) {
+                    leftBg = document.createElement('div');
+                    leftBg.id = 'spread-left-bg';
+                    leftBg.appendChild(buildPageSurface(pages[spread.left]));
+                    book.appendChild(leftBg);
+                }
+            }
+        }
+
+        function nextPreviewPage() {
+            if (viewMode === 'single') {
+                if (viewIdx >= pages.length - 1) return;
+                document.querySelectorAll('#preview-book .page-3d')[viewIdx].classList.add('flipped');
+                viewIdx++;
+            } else {
+                if (spreadIdx >= spreadList.length - 1) return;
+                const allP = document.querySelectorAll('#preview-book .page-3d');
+                allP[spreadIdx].classList.add('flipped');
+                spreadIdx++;
+                // Wait a bit for animation then update layout
+                setTimeout(() => updateSpreadLayout(), 450);
+            }
+        }
+
+        function prevPreviewPage() {
+            if (viewMode === 'single') {
+                if (viewIdx <= 0) return;
+                viewIdx--;
+                document.querySelectorAll('#preview-book .page-3d')[viewIdx].classList.remove('flipped');
+            } else {
+                if (spreadIdx <= 0) return;
+                spreadIdx--;
+                const allP = document.querySelectorAll('#preview-book .page-3d');
+                allP[spreadIdx].classList.remove('flipped');
+                setTimeout(() => updateSpreadLayout(), 450);
+            }
+        }
+
+        function toggleViewMode() {
+            const btn = document.getElementById('mode-toggle-btn');
+            if (viewMode === 'single') {
+                viewMode = 'spread';
+                btn.textContent = '📄 Single';
+            } else {
+                viewMode = 'single';
+                btn.textContent = '📖 Spread';
+            }
+            viewIdx = 0;
+            spreadIdx = 0;
+            buildPreview();
+        }
+
+        function toggleAutoplay() {
+            if (autoplayTimer) {
+                stopAutoplay();
+                showToast("Autoplay stopped");
+            } else {
+                showToast("Autoplay started");
+                const delay = parseInt(document.getElementById('autoplay-delay').value) || 3000;
+                autoplayTimer = setInterval(() => {
+                    if (viewMode === 'single') {
+                        if (viewIdx < pages.length - 1) nextPreviewPage();
+                        else stopAutoplay();
+                    } else {
+                        if (spreadIdx < spreadList.length - 1) nextPreviewPage();
+                        else stopAutoplay();
+                    }
+                }, delay);
+            }
+        }
+
+        function stopAutoplay() { clearInterval(autoplayTimer); autoplayTimer = null; }
+
+        // ======== EXPORT ========
+        function exportStandalone() {
+            const pagesJSON = JSON.stringify(pages);
+            const speed = document.getElementById('speed-range').value;
+            const delay = document.getElementById('autoplay-delay').value;
+
+            const standalone = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+    <title>Our Valentine Book</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background: #12122b; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        #book-viewport { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; perspective: 2000px; }
+        .book-wrapper { position: relative; transform-style: preserve-3d; transition: width 0.6s ease, transform 0.6s ease; }
+        .book-wrapper.single-mode { width: 340px; height: 480px; }
+        .book-wrapper.spread-mode { height: 480px; }
+        .page-3d {
+            position: absolute; width: 340px; height: 480px; top: 0;
+            background: #fff; transform-origin: left center;
+            backface-visibility: hidden; transition: transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1), left 0.6s ease;
+            overflow: hidden;
+        }
+        .page-3d.flipped { transform: rotateY(-180deg); }
+        .book-wrapper.single-mode .page-3d { left: 0; border-radius: 0 10px 10px 0; box-shadow: inset 3px 0 10px rgba(0,0,0,0.1); }
+        .book-wrapper.single-mode .page-3d.flipped { border-radius: 10px 0 0 10px; }
+        .book-wrapper.spread-mode .page-3d { border-radius: 0 10px 10px 0; box-shadow: inset 3px 0 10px rgba(0,0,0,0.1); }
+        .book-wrapper.spread-mode .page-3d.flipped { border-radius: 10px 0 0 10px; }
+        #spread-left-bg { position: absolute; left: 0; top: 0; width: 340px; height: 480px; border-radius: 10px 0 0 10px; overflow: hidden; z-index: 0; box-shadow: inset -3px 0 10px rgba(0,0,0,0.05); }
+        .spine-shadow { position: absolute; left: 338px; top: 0; width: 4px; height: 100%; background: linear-gradient(to right,rgba(0,0,0,0.15),transparent); z-index: 9999; pointer-events: none; }
+        .element { position: absolute; }
+        .element img, .element video { width: 100%; height: 100%; object-fit: cover; }
+        #controls { padding: 20px; display: flex; gap: 15px; align-items: center; justify-content: center; }
+        #controls button { width: 50px; height: 50px; border-radius: 50%; background: #fff; border: none; font-size: 1.2rem; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        #controls .mode-toggle { width: auto; padding: 0 18px; border-radius: 25px; font-size: 0.8rem; font-weight: 700; background: #ff4d6d; color: #fff; }
+        @media (max-width: 768px) {
+            .book-wrapper.single-mode { width: 260px; height: 380px; }
+            .book-wrapper.single-mode .page-3d { width: 260px; height: 380px; }
+            .book-wrapper.spread-mode .page-3d { width: 260px; height: 380px; }
+            #spread-left-bg { width: 260px; height: 380px; }
+            .spine-shadow { left: 258px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="book-viewport">
+        <div class="book-wrapper single-mode" id="preview-book"></div>
+    </div>
+    <div id="controls">
+        <button onclick="prevPage()">◀</button>
+        <button onclick="toggleAutoplay()">⏯</button>
+        <button onclick="nextPage()">▶</button>
+        <button class="mode-toggle" id="mode-btn" onclick="toggleMode()">📖 Spread</button>
+    </div>
+    <script>
+        const pages = ${pagesJSON};
+        let viewIdx = 0;
+        let viewMode = 'single';
+        let autoplayTimer = null;
+        let spreadList = [];
+        let spreadIdx = 0;
+        const isMobile = window.innerWidth < 768;
+        const PW = isMobile ? 260 : 340;
+
+        function applyBg(el, pg) {
+            const b = pg.background;
+            if(b.startsWith('linear')) el.style.background = b;
+            else if(b.startsWith('http')||b.startsWith('data:')||b.startsWith('blob:')) el.style.background='url('+b+') center/cover no-repeat';
+            else if(b.startsWith('#')||b.startsWith('rgb')) el.style.background=b;
+            else if(b.match(/\\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) el.style.background='url('+b+') center/cover no-repeat';
+            else el.style.background=b;
+        }
+
+        function buildEl(el) {
+            const d = document.createElement('div');
+            d.className='element';
+            d.style.cssText='position:absolute;left:'+el.x+'px;top:'+el.y+'px;width:'+el.w+'px;height:'+el.h+'px;transform:rotate('+(el.rot||0)+'deg);';
+            if(el.type==='text') d.innerHTML='<p style="font-size:'+el.size+'px;color:'+el.color+';font-family:'+(el.font||'Segoe UI')+';text-align:center;width:100%;height:100%;display:flex;align-items:center;justify-content:center;margin:0;">'+el.content+'</p>';
+            else if(el.type==='sticker') d.innerHTML='<div style="font-size:'+el.size+'px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">'+el.content+'</div>';
+            else if(el.type==='image') d.innerHTML='<img src="'+el.content+'">';
+            else if(el.type==='video') d.innerHTML='<video src="'+el.content+'" autoplay loop muted playsinline></video>';
+            else if(el.type==='embed') d.innerHTML='<div style="width:100%;height:100%;pointer-events:auto;">'+el.content+'</div>';
+            else if(el.type==='shape') d.innerHTML='<div style="width:100%;height:100%;background:'+el.color+';border-radius:'+(el.shape==='circle'?'50%':'0px')+'"></div>';
+            return d;
+        }
+
+        function buildSurface(pg) {
+            const s = document.createElement('div');
+            s.style.cssText='width:100%;height:100%;position:relative;';
+            applyBg(s, pg);
+            if(pg.bgVideo) { const v=document.createElement('video'); v.src=pg.bgVideo; v.autoplay=true; v.loop=true; v.muted=true; v.playsInline=true; v.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none;'; s.appendChild(v); }
+            pg.elements.forEach(el => s.appendChild(buildEl(el)));
+            return s;
+        }
+
+        function computeSpreads() {
+            const sp = [];
+            sp.push({left:null, right:0});
+            let i=1; const li=pages.length-1;
+            while(i<li) { const l=i; const r=(i+1<li)?i+1:null; sp.push({left:l,right:r}); i+=2; }
+            sp.push({left:li, right:null});
+            return sp;
+        }
+
+        function build() {
+            const book = document.getElementById('preview-book');
+            book.innerHTML = '';
+            book.style.transform = '';
+            if(viewMode==='single') {
+                book.className='book-wrapper single-mode';
+                pages.forEach((pg,i) => {
+                    const p=document.createElement('div'); p.className='page-3d'; p.style.zIndex=pages.length-i;
+                    if(i<viewIdx) p.classList.add('flipped');
+                    p.appendChild(buildSurface(pg)); book.appendChild(p);
+                });
+            } else {
+                book.className='book-wrapper spread-mode';
+                spreadList = computeSpreads();
+                for(let i=0;i<spreadList.length;i++) {
+                    const sp=spreadList[i];
+                    const p=document.createElement('div'); p.className='page-3d'; p.style.zIndex=spreadList.length-i;
+                    p.dataset.idx=i;
+                    const pi=sp.right!==null?sp.right:sp.left;
+                    if(pi!==null) p.appendChild(buildSurface(pages[pi]));
+                    book.appendChild(p);
+                }
+                const spine=document.createElement('div'); spine.className='spine-shadow'; spine.id='spine-el'; spine.style.display='none'; book.appendChild(spine);
+                updateLayout();
+            }
+        }
+
+        function updateLayout() {
+            const book=document.getElementById('preview-book');
+            let lb=document.getElementById('spread-left-bg'); if(lb) lb.remove();
+            const spine=document.getElementById('spine-el');
+            const allP=document.querySelectorAll('#preview-book .page-3d');
+            if(spreadIdx===0||spreadIdx>=spreadList.length-1) {
+                book.style.width=PW+'px';
+                if(spine) spine.style.display='none';
+                allP.forEach(p=>{p.style.left='0px';});
+            } else {
+                book.style.width=(PW*2)+'px';
+                if(spine) { spine.style.display='block'; spine.style.left=(PW-2)+'px'; }
+                allP.forEach(p=>{p.style.left=PW+'px';});
+                const sp=spreadList[spreadIdx];
+                if(sp.left!==null) {
+                    lb=document.createElement('div'); lb.id='spread-left-bg';
+                    lb.appendChild(buildSurface(pages[sp.left]));
+                    book.appendChild(lb);
+                }
+            }
+        }
+
+        function nextPage() {
+            if(viewMode==='single') {
+                if(viewIdx>=pages.length-1) return;
+                document.querySelectorAll('#preview-book .page-3d')[viewIdx].classList.add('flipped');
+                viewIdx++;
+            } else {
+                if(spreadIdx>=spreadList.length-1) return;
+                document.querySelectorAll('#preview-book .page-3d')[spreadIdx].classList.add('flipped');
+                spreadIdx++;
+                setTimeout(()=>updateLayout(),450);
+            }
+        }
+
+        function prevPage() {
+            if(viewMode==='single') {
+                if(viewIdx<=0) return;
+                viewIdx--;
+                document.querySelectorAll('#preview-book .page-3d')[viewIdx].classList.remove('flipped');
+            } else {
+                if(spreadIdx<=0) return;
+                spreadIdx--;
+                document.querySelectorAll('#preview-book .page-3d')[spreadIdx].classList.remove('flipped');
+                setTimeout(()=>updateLayout(),450);
+            }
+        }
+
+        function toggleMode() {
+            const btn=document.getElementById('mode-btn');
+            if(viewMode==='single'){viewMode='spread';btn.textContent='📄 Single';}
+            else{viewMode='single';btn.textContent='📖 Spread';}
+            viewIdx=0;spreadIdx=0;build();
+        }
+
+        function toggleAutoplay() {
+            if(autoplayTimer){clearInterval(autoplayTimer);autoplayTimer=null;}
+            else{autoplayTimer=setInterval(()=>{
+                if(viewMode==='single'){if(viewIdx<pages.length-1) nextPage(); else{clearInterval(autoplayTimer);autoplayTimer=null;}}
+                else{if(spreadIdx<spreadList.length-1) nextPage(); else{clearInterval(autoplayTimer);autoplayTimer=null;}}
+            },${delay});}
+        }
+
+        build();
+    <\/script>
+</body>
+</html>`;
+
+            const blob = new Blob([standalone], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "Valentine_Book.html";
+            a.click();
+        }
+
+        // ======== HELPERS ========
+        function populateStickers() {
+            const list = document.getElementById('stickers-list');
+            stickers.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'sticker-item';
+                div.innerText = s;
+                div.onclick = () => addSticker(s);
+                list.appendChild(div);
+            });
+        }
+
+        function populateBgPresets() {
+            const list = document.getElementById('bg-presets');
+            bgColors.forEach(c => {
+                const d = document.createElement('div');
+                d.style.background = c;
+                d.style.height = '30px';
+                d.style.borderRadius = '5px';
+                d.style.cursor = 'pointer';
+                d.style.border = '1px solid #ddd';
+                d.onclick = () => { pages[curIdx].background = c; renderEditor(); };
+                list.appendChild(d);
+            });
+        }
+
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            t.innerText = m;
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 2000);
+        }
+
+        document.addEventListener('pointerdown', (e) => {
+            const menu = document.getElementById('menu-dropdown');
+            const menuBtn = document.getElementById('menu-btn');
+            if (menu.style.display === 'flex' && !menu.contains(e.target) && e.target !== menuBtn) {
+                menu.style.display = 'none';
+            }
+        });
+
+        initApp();
+    </script>
+</body>
+</html>
